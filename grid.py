@@ -1,65 +1,50 @@
-import pygame, random
+import random
+import curses
 
 class Grid:
-    def __init__(self, screen, offset, scale, alive_colour, dead_colour):
-        self.scale = scale
-        self.screen = screen
-        self.offset = offset
-
-        self.alive_colour = alive_colour
-        self.dead_colour = dead_colour
-
-        self.cols = screen.get_height() // scale
-        self.rows = screen.get_width() // scale
-        
+    def __init__(self, stdscr):
+        self.stdscr = stdscr
+        self.rows, self.cols = self.stdscr.getmaxyx()
+        self.rows -= 1
+        self.cols -= 1
         self.size = (self.rows, self.cols)
-        self.arr = [[None for i in range(self.rows)] for i in range(self.cols)]
+        self.arr = [[None for i in range(self.cols)] for i in range(self.rows)]
 
     def make_2d_array(self):
-        for i in range(self.cols):
-            for j in range(self.rows):
-                self.arr[i][j] = random.randrange(2)
+        for col in range(self.cols):
+            for row in range(self.rows):
+                self.arr[row][col] = random.randrange(2)
 
-    def draw_cell(self, x, y, size, colour):
-        pygame.draw.rect(self.screen, colour, (x, y, size, size))
-
-    def count_neighbours(self, x, y):
+    def count_neighbours(self, row, col):
         neighbour_sum = 0
         for i in range(-1, 2):
             for j in range(-1, 2):
-                x_edge = (x + i + self.rows) % self.rows
-                y_edge = (y + j + self.cols) % self.cols
-                neighbour_sum += self.arr[x_edge][y_edge]
+                row_edge = (row + i + self.rows) % self.rows
+                col_edge = (col + j + self.cols) % self.cols
+                neighbour_sum += self.arr[row_edge][col_edge]
 
-        neighbour_sum -= self.arr[x][y]
+        neighbour_sum -= self.arr[row][col]
         return neighbour_sum
 
-    def conway(self):
-        for x in range(self.rows):
-            for y in range(self.cols):
-                cell_x = x * self.scale
-                cell_y = y * self.scale
-                cell_size = self.scale - self.offset
-                
-                if self.arr[x][y] == 1:
-                    colour = self.alive_colour     
-                else:
-                    colour = self.dead_colour
+    def display(self):
+        for row in range(self.rows):
+            for col in range(self.cols):
+                cell = self.arr[row][col]
+                translate = {0:' ', 1:'█'}
+                self.stdscr.addch(row, col, translate[cell])
+        self.stdscr.refresh()
 
-                self.draw_cell(cell_x, cell_y, cell_size, colour)
-
-    def check_rules(self):
-        nextArr = [[None for i in range(self.rows)] for i in range(self.cols)]
-
-        for x in range(self.rows):
-            for y in range(self.cols):
-                state = self.arr[x][y]
-                neighbours = self.count_neighbours(x, y)
+    def update(self):
+        nextArr = [[None for i in range(self.cols)] for i in range(self.rows)]
+        for row in range(self.rows):
+            for col in range(self.cols):
+                state = self.arr[row][col]
+                neighbours = self.count_neighbours(row, col)
                 if state == 0 and neighbours == 3:
-                    nextArr[x][y] = 1
+                    nextArr[row][col] = 1
                 elif state == 1 and (neighbours < 2 or neighbours > 3):
-                    nextArr[x][y] = 0
+                    nextArr[row][col] = 0
                 else:
-                    nextArr[x][y] = state
+                    nextArr[row][col] = state
 
         self.arr = nextArr
